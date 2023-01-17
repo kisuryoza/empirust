@@ -32,6 +32,7 @@ pub struct Config {
     pub key_queue_next: KeyCode,
     pub key_queue_prev: KeyCode,
     pub key_switch_song: KeyCode,
+    pub keys: Vec<Vec<String>>,
 }
 
 impl Default for Config {
@@ -44,6 +45,17 @@ impl Default for Config {
             .bg(Color::Black)
             .fg(Color::Magenta)
             .add_modifier(Modifier::BOLD);
+
+        let mut keys: Vec<Vec<String>> = Vec::new();
+
+        let key_quit = gen_key_and_desc(&mut keys, "q", "Quit");
+        let key_switch_tab = gen_key_and_desc(&mut keys, "tab", "Switch tab");
+        let key_toggle_pause = gen_key_and_desc(&mut keys, "p", "Toggle pause");
+        let key_vol_down = gen_key_and_desc(&mut keys, "left", "Volume down");
+        let key_vol_up = gen_key_and_desc(&mut keys, "right", "Volume up");
+        let key_queue_next = gen_key_and_desc(&mut keys, "j", "Move next");
+        let key_queue_prev = gen_key_and_desc(&mut keys, "k", "Move back");
+        let key_switch_song = gen_key_and_desc(&mut keys, "enter", "Switch to song under cursor");
 
         Self {
             playlist_layout: vec![
@@ -58,14 +70,15 @@ impl Default for Config {
             selected_style,
             playing_style,
             progress_style,
-            key_quit: KeyCode::Char('q'),
-            key_switch_tab: KeyCode::Tab,
-            key_toggle_pause: KeyCode::Char('p'),
-            key_vol_down: KeyCode::Left,
-            key_vol_up: KeyCode::Right,
-            key_queue_next: KeyCode::Char('j'),
-            key_queue_prev: KeyCode::Char('k'),
-            key_switch_song: KeyCode::Enter,
+            key_quit,
+            key_switch_tab,
+            key_toggle_pause,
+            key_vol_down,
+            key_vol_up,
+            key_queue_next,
+            key_queue_prev,
+            key_switch_song,
+            keys,
         }
     }
 }
@@ -99,5 +112,35 @@ impl Config {
 
     pub fn progress_style(&self) -> Style {
         self.progress_style
+    }
+}
+
+fn gen_key_and_desc(keys: &mut Vec<Vec<String>>, key: &str, desc: &str) -> KeyCode {
+    let cell = vec![key.to_string(), desc.to_string()];
+    keys.push(cell);
+    to_keycode(key)
+}
+
+fn to_keycode(key: &str) -> KeyCode {
+    if key.len() == 1 {
+        KeyCode::Char(key.chars().next().unwrap())
+    } else {
+        match key {
+            "backspace" => KeyCode::Backspace,
+            "enter" => KeyCode::Enter,
+            "left" => KeyCode::Left,
+            "right" => KeyCode::Right,
+            "up" => KeyCode::Up,
+            "down" => KeyCode::Down,
+            "home" => KeyCode::Home,
+            "end" => KeyCode::End,
+            "pageup" => KeyCode::PageUp,
+            "tab" => KeyCode::Tab,
+            "backtab" => KeyCode::BackTab,
+            "delete" => KeyCode::Delete,
+            "insert" => KeyCode::Insert,
+            "esc" => KeyCode::Esc,
+            _ => KeyCode::Null,
+        }
     }
 }

@@ -281,25 +281,10 @@ where
     }
 
     if app.show_popup {
-        let area = calculate_area_for_popup(20, 40, size);
+        let area = calculate_area_for_popup(40, 40, size);
         f.render_widget(tui::widgets::Clear, area); //this clears out the background
 
-        // let mut keys = HashMap::new();
-        // keys.insert("q", "Quit");
-        // keys.insert("p", "Toogle pause");
-        // keys.insert("<TAB>", "Switch tab");
-
-        let mut keys: Vec<Vec<String>> = Vec::new();
-        let mut key: Vec<String> = Vec::new();
-        key.push(String::from("q"));
-        key.push(String::from("Quit"));
-        keys.push(key);
-        let mut key: Vec<String> = Vec::new();
-        key.push(String::from("p"));
-        key.push(String::from("Toogle pause"));
-        keys.push(key);
-
-        let rows = keys.iter().map(|i| {
+        let rows = config.keys.iter().map(|i| {
             let cells = i.iter().map(|c| Cell::from(&**c));
             Row::new(cells)
         });
