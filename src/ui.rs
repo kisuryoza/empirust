@@ -14,55 +14,54 @@ use tui::{
 
 use crate::config;
 
-// {{{ struct App
 #[derive(Debug)]
-/// Holds data of the application's status
-pub struct App<'a> {
-    pub tick_rate: Duration,
-    pub show_popup: bool,
-    pub tab: Tab<'a>,
-    pub queue: Queue<'a>,
-    pub status: mpd::Status,
-    prev_song: Option<mpd::Song>,
-    curr_song: Option<mpd::Song>,
-    curr_playing_pos: u32,
-    curr_song_duration: u16,
-    curr_song_duration_formated: String,
+/// Holds MPD's data
+pub(crate) struct Mpd {
+    pub(crate) client: Client,
+    pub(crate) status: mpd::Status,
+    pub(crate) playlists: Option<Vec<mpd::Playlist>>,
+    pub(crate) queue: Option<Vec<mpd::Song>>,
+    pub(crate) prev_song: Option<mpd::Song>,
+    pub(crate) curr_song: Option<mpd::Song>,
+    pub(crate) curr_playing_pos: u32,
+    pub(crate) curr_song_duration: u16,
 }
 
-impl<'a> App<'a> {
-    pub fn build(
-        client: &mut mpd::Client,
-        config: &config::Config,
-    ) -> Result<Self, Box<dyn Error>> {
+impl Mpd {
+    pub(crate) fn new(mut client: mpd::Client) -> Result<Self, Box<dyn Error>> {
         let status = client.status()?;
-        let curr_song = match client.currentsong() {
-            Ok(currentsong) => currentsong,
+        let playlists = match client.playlists() {
+            Ok(arg) => Some(arg),
             Err(_) => None,
         };
-
+        let queue = match client.queue() {
+            Ok(arg) => Some(arg),
+            Err(_) => None,
+        };
+        let curr_song = match client.currentsong() {
+            Ok(arg) => arg,
+            Err(_) => None,
+        };
         let curr_song_duration: u16 = match status.time {
             Some(time) => time.1.num_seconds().try_into().unwrap_or(1),
             None => 1,
         };
 
         Ok(Self {
-            tick_rate: Duration::from_millis(250),
-            show_popup: false,
-            tab: Tab::new(),
-            queue: Queue::new(client, config),
+            client,
             status: status.clone(),
+            playlists,
+            queue,
             prev_song: curr_song.clone(),
             curr_song,
             curr_playing_pos: status.song.unwrap().pos,
             curr_song_duration,
-            curr_song_duration_formated: human_formated_time(curr_song_duration),
         })
     }
 
-    pub fn on_tick(&mut self, client: &mut mpd::Client) {
-        let status = client.status().unwrap();
-        let currentsong = match client.currentsong() {
+    pub(crate) fn update(&mut self) {
+        let status = self.client.status().unwrap();
+        let currentsong = match self.client.currentsong() {
             Ok(currentsong) => currentsong,
             Err(_) => None,
         };
@@ -79,36 +78,57 @@ impl<'a> App<'a> {
                 None => 0,
             };
             self.curr_song_duration = curr_song_duration;
-            self.curr_song_duration_formated = human_formated_time(curr_song_duration);
         }
     }
 }
-// }}}
 
-// {{{ struct Tab
+// {{{ struct App
 #[derive(Debug)]
-pub struct Tab<'a> {
-    titles: Vec<Spans<'a>>,
-    index: usize,
+/// Holds data of the application's ui
+///
+/// * `tick_rate`: how often to update ui
+/// * `tab_titles`: vector of tab's names
+/// * `tab_index`: number of selected tab
+/// * `show_popup`: is popup opened
+/// * `queue`: holds list of songs to display
+pub(crate) struct App<'a> {
+    pub(crate) tick_rate: Duration,
+    tab_titles: Vec<Spans<'a>>,
+    tab_index: usize,
+    pub(crate) show_popup: bool,
+    pub(crate) queue: Queue<'a>,
 }
 
-impl<'a> Tab<'a> {
-    fn new() -> Self {
-        let title = ["Queue", "Browse"];
+impl<'a> App<'a> {
+    pub(crate) fn build(client: &Mpd, config: &config::Config) -> Result<Self, Box<dyn Error>> {
+        let tab_titles = ["Queue", "Browse"];
 
-        let titles: Vec<Spans> = title
+        let tab_titles: Vec<Spans> = tab_titles
             .iter()
             .map(|t| Spans::from(Span::styled(*t, Style::default())))
             .collect();
 
-        Self { titles, index: 0 }
+        let queue = Queue::new(client, config);
+
+        Ok(Self {
+            tick_rate: Duration::from_millis(250),
+            tab_titles,
+            tab_index: 0,
+            show_popup: false,
+            queue,
+        })
     }
 
-    pub fn next(&mut self) {
-        self.index = (self.index + 1) % self.titles.len();
+    pub(crate) fn switch(&mut self, client: &mut Mpd) {
+        let selected = self.queue.state.selected().unwrap() as u32;
+        client.client.switch(selected).unwrap();
     }
 
-    // pub fn previous(&mut self) {
+    pub(crate) fn tab_next(&mut self) {
+        self.tab_index = (self.tab_index + 1) % self.tab_titles.len();
+    }
+
+    // pub(crate) fn tab_previous(&mut self) {
     //     if self.index > 0 {
     //         self.index -= 1;
     //     } else {
@@ -121,7 +141,12 @@ impl<'a> Tab<'a> {
 // {{{ struct Queue
 #[derive(Debug)]
 /// Queue widget
-pub struct Queue<'a> {
+///
+/// * `state`: selected item
+/// * `header`:
+/// * `rows`: vector of strings of rows
+/// * `widths`:
+pub(crate) struct Queue<'a> {
     state: TableState,
     header: Row<'a>,
     rows: Vec<Vec<String>>,
@@ -130,9 +155,12 @@ pub struct Queue<'a> {
 }
 
 impl<'a> Queue<'a> {
-    fn new(client: &mut mpd::Client, config: &config::Config) -> Self {
+    fn new(client: &Mpd, config: &config::Config) -> Self {
         // setup state
-        let pos = client.status().unwrap().song.unwrap().pos as usize;
+        let pos: usize = match client.status.song {
+            Some(arg) => arg.pos as usize,
+            None => 0,
+        };
         let mut state = TableState::default();
         state.select(Some(pos));
 
@@ -159,7 +187,7 @@ impl<'a> Queue<'a> {
 
         // setup rows
         let mut rows: Vec<Vec<String>> = Vec::new();
-        if let Ok(songs) = client.queue() {
+        if let Some(songs) = &client.queue {
             for song in songs {
                 let mut cells = Vec::new();
                 for layout in config.playlist_layout() {
@@ -211,7 +239,7 @@ impl<'a> Queue<'a> {
         }
     }
 
-    pub fn next(&mut self) {
+    pub(crate) fn next(&mut self) {
         let i = match self.state.selected() {
             Some(i) => {
                 if i >= self.rows.len() - 1 {
@@ -225,7 +253,7 @@ impl<'a> Queue<'a> {
         self.state.select(Some(i));
     }
 
-    pub fn previous(&mut self) {
+    pub(crate) fn previous(&mut self) {
         let i = match self.state.selected() {
             Some(i) => {
                 if i == 0 {
@@ -237,11 +265,6 @@ impl<'a> Queue<'a> {
             None => 0,
         };
         self.state.select(Some(i));
-    }
-
-    pub fn switch(&mut self, client: &mut mpd::Client) {
-        let selected = self.state.selected().unwrap() as u32;
-        client.switch(selected).unwrap();
     }
 }
 // }}}
@@ -257,7 +280,7 @@ fn human_formated_time(time: u16) -> String {
 }
 
 /// Renders UI
-pub fn draw<B>(f: &mut Frame<B>, app: &mut App, config: &config::Config, client: &mut Client)
+pub(crate) fn draw<B>(f: &mut Frame<B>, app: &mut App, config: &config::Config, client: &Mpd)
 where
     B: Backend,
 {
@@ -268,14 +291,14 @@ where
         .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
         .split(size);
 
-    let tabs = Tabs::new(app.tab.titles.clone())
-        .select(app.tab.index)
+    let tabs = Tabs::new(app.tab_titles.clone())
+        .select(app.tab_index)
         .style(Style::default().fg(Color::DarkGray))
         .highlight_style(config.tab_selected_style());
     f.render_widget(tabs, chunks[0]);
 
-    match app.tab.index {
-        0 => draw_tab_one(f, app, chunks[1], config),
+    match app.tab_index {
+        0 => draw_tab_one(f, app, chunks[1], config, client),
         1 => draw_tab_two(f, app, chunks[1], config, client),
         _ => {}
     }
@@ -324,8 +347,13 @@ fn calculate_area_for_popup(percent_x: u16, percent_y: u16, area: Rect) -> Rect 
 }
 
 // {{{ 1st tab
-fn draw_tab_one<B>(f: &mut Frame<B>, app: &mut App, area: Rect, config: &config::Config)
-where
+fn draw_tab_one<B>(
+    f: &mut Frame<B>,
+    app: &mut App,
+    area: Rect,
+    config: &config::Config,
+    client: &Mpd,
+) where
     B: Backend,
 {
     let chunks = Layout::default()
@@ -340,11 +368,11 @@ where
         )
         .split(area);
 
-    draw_queue(f, app, chunks[0], config);
-    draw_progressbar(f, app, chunks[2], config);
+    draw_queue(f, app, chunks[0], config, client);
+    draw_progressbar(f, app, chunks[2], config, client);
 }
 
-fn draw_queue<B>(f: &mut Frame<B>, app: &mut App, area: Rect, config: &config::Config)
+fn draw_queue<B>(f: &mut Frame<B>, app: &mut App, area: Rect, config: &config::Config, client: &Mpd)
 where
     B: Backend,
 {
@@ -358,7 +386,7 @@ where
     let mut i = 0;
     let rows = app.queue.rows.iter().map(|item| -> Row {
         let cells = item.iter().map(|c| Cell::from(&**c));
-        let style = if app.curr_playing_pos == i {
+        let style = if client.curr_playing_pos == i {
             config.playing_style()
         } else {
             config.normal_style()
@@ -377,8 +405,13 @@ where
     f.render_stateful_widget(table, chunks[0], &mut app.queue.state);
 }
 
-fn draw_progressbar<B>(f: &mut Frame<B>, app: &mut App, area: Rect, config: &config::Config)
-where
+fn draw_progressbar<B>(
+    f: &mut Frame<B>,
+    _app: &mut App,
+    area: Rect,
+    config: &config::Config,
+    client: &Mpd,
+) where
     B: Backend,
 {
     let chunks = Layout::default()
@@ -393,14 +426,14 @@ where
         )
         .split(area);
 
-    let title: (String, String) = match &app.curr_song {
+    let title: (String, String) = match &client.curr_song {
         Some(song) => {
             let artist = song
                 .tags
                 .get("Artist")
                 .unwrap_or(&String::new())
                 .to_string();
-            let title = song.title.clone().unwrap_or(String::new());
+            let title = song.title.clone().unwrap_or_default();
             (artist, title)
         }
         None => (String::new(), String::new()),
@@ -411,22 +444,23 @@ where
         .borders(Borders::TOP);
     f.render_widget(title, chunks[0]);
 
-    let volume = app.status.volume;
+    let volume = client.status.volume;
     let status = Block::default().title(Span::styled(
         format!("Volume: {}%", volume),
         Style::default().fg(Color::Gray),
     ));
     f.render_widget(status, chunks[1]);
 
-    let progress: (String, u16) = match app.status.time {
+    let progress: (String, u16) = match client.status.time {
         Some(time) => {
             let elapsed = time.0.num_seconds() as u16;
+            let duration = time.1.num_seconds() as u16;
             let label = format!(
                 "{}/{}",
                 human_formated_time(elapsed),
-                app.curr_song_duration_formated
+                human_formated_time(duration),
             );
-            (label, (elapsed * 100 / app.curr_song_duration))
+            (label, (elapsed * 100 / duration))
         }
         None => (String::new(), 0),
     };
@@ -444,7 +478,7 @@ fn draw_tab_two<B>(
     _app: &mut App,
     area: Rect,
     _config: &config::Config,
-    client: &mut Client,
+    client: &Mpd,
 ) where
     B: Backend,
 {
@@ -453,17 +487,15 @@ fn draw_tab_two<B>(
         .constraints([Constraint::Min(0)].as_ref())
         .split(area);
 
-    let items: Vec<ListItem> = client
-        .playlists()
-        .unwrap()
-        .iter()
-        .map(|i| ListItem::new(i.name.clone()).style(Style::default()))
-        .collect();
-    let items = List::new(items)
-        .block(Block::default().borders(Borders::TOP))
-        .highlight_style(Style::default());
-    f.render_widget(items, chunks[0]);
-
-    // draw_queue(f, app, chunks[0], config);
+    if let Some(items) = &client.playlists {
+        let items: Vec<ListItem> = items
+            .iter()
+            .map(|i| ListItem::new(i.name.clone()).style(Style::default()))
+            .collect();
+        let items = List::new(items)
+            .block(Block::default().borders(Borders::TOP))
+            .highlight_style(Style::default());
+        f.render_widget(items, chunks[0]);
+    }
 }
 // }}}

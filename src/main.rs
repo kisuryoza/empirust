@@ -9,21 +9,22 @@ use crossterm::{
 use mpd::Client;
 use std::error::Error;
 use tui::{backend::CrosstermBackend, Terminal};
-use ui::App;
+use ui::{App, Mpd};
 
 mod config;
 mod input;
 mod ui;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    // connect to mpd server
-    let mut client = Client::connect("127.0.0.1:6600").unwrap();
+    // connect to mpd server and create an mpd data holder
+    let client = Client::connect("127.0.0.1:6600").unwrap();
+    let client = Mpd::new(client).unwrap();
 
     // parse config
     let config = Config::new().unwrap();
 
     // setup UI
-    let mut app = App::build(&mut client, &config).unwrap();
+    let app = App::build(&client, &config).unwrap();
 
     // setup terminal
     enable_raw_mode()?;
@@ -32,7 +33,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    if let Err(e) = input::input(&mut terminal, &mut app, client, config) {
+    // handle input
+    if let Err(e) = input::input(&mut terminal, app, client, config) {
         println!("Input Error: {:?}\r", e);
     }
 

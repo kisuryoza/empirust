@@ -7,7 +7,7 @@ use tui::style::{Color, Modifier, Style};
 
 #[allow(dead_code)]
 #[derive(Debug)]
-pub enum PlaylistLayout {
+pub(crate) enum PlaylistLayout {
     File,
     Title,
     Duration,
@@ -17,22 +17,22 @@ pub enum PlaylistLayout {
 }
 
 #[derive(Debug)]
-pub struct Config {
+pub(crate) struct Config {
     playlist_layout: Vec<(PlaylistLayout, u16)>,
     tab_selected_style: Style,
     normal_style: Style,
     selected_style: Style,
     playing_style: Style,
     progress_style: Style,
-    pub key_quit: KeyCode,
-    pub key_switch_tab: KeyCode,
-    pub key_toggle_pause: KeyCode,
-    pub key_vol_down: KeyCode,
-    pub key_vol_up: KeyCode,
-    pub key_queue_next: KeyCode,
-    pub key_queue_prev: KeyCode,
-    pub key_switch_song: KeyCode,
-    pub keys: Vec<Vec<String>>,
+    pub(crate) key_quit: KeyCode,
+    pub(crate) key_switch_tab: KeyCode,
+    pub(crate) key_toggle_pause: KeyCode,
+    pub(crate) key_vol_down: KeyCode,
+    pub(crate) key_vol_up: KeyCode,
+    pub(crate) key_queue_next: KeyCode,
+    pub(crate) key_queue_prev: KeyCode,
+    pub(crate) key_switch_song: KeyCode,
+    pub(crate) keys: Vec<Vec<String>>,
 }
 
 impl Default for Config {
@@ -84,33 +84,33 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn new() -> Result<Self, Box<dyn Error>> {
+    pub(crate) fn new() -> Result<Self, Box<dyn Error>> {
         let config: Config = Config::default();
 
         Ok(config)
     }
 
-    pub fn tab_selected_style(&self) -> Style {
+    pub(crate) fn tab_selected_style(&self) -> Style {
         self.tab_selected_style
     }
 
-    pub fn playlist_layout(&self) -> &[(PlaylistLayout, u16)] {
+    pub(crate) fn playlist_layout(&self) -> &[(PlaylistLayout, u16)] {
         self.playlist_layout.as_ref()
     }
 
-    pub fn normal_style(&self) -> Style {
+    pub(crate) fn normal_style(&self) -> Style {
         self.normal_style
     }
 
-    pub fn selected_style(&self) -> Style {
+    pub(crate) fn selected_style(&self) -> Style {
         self.selected_style
     }
 
-    pub fn playing_style(&self) -> Style {
+    pub(crate) fn playing_style(&self) -> Style {
         self.playing_style
     }
 
-    pub fn progress_style(&self) -> Style {
+    pub(crate) fn progress_style(&self) -> Style {
         self.progress_style
     }
 }
