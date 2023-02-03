@@ -1,5 +1,7 @@
 //! Manages input keys
 
+use crate::mpd::Mpd;
+use crate::ui::App;
 use crossterm::event::{self, Event, KeyCode};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -10,9 +12,6 @@ use tui::backend::Backend;
 use tui::Terminal;
 
 use crate::config::Config;
-use crate::ui;
-use crate::ui::App;
-use crate::ui::Mpd;
 
 pub(crate) fn input<B: Backend>(
     terminal: &mut Terminal<B>,

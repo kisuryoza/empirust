@@ -1,8 +1,7 @@
 //! UI crate
 
+use crate::mpd::Mpd;
 use std::{error::Error, time::Duration};
-
-use mpd::Client;
 use tui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
