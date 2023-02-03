@@ -1,24 +1,22 @@
-extern crate mpd;
-
+use crate::ui::App;
 use config::Config;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use mpd::Client;
 use std::error::Error;
 use tui::{backend::CrosstermBackend, Terminal};
-use ui::{App, Mpd};
 
 mod config;
 mod input;
+mod mpd;
 mod ui;
 
 fn main() -> Result<(), Box<dyn Error>> {
     // connect to mpd server and create an mpd data holder
-    let client = Client::connect("127.0.0.1:6600").unwrap();
-    let client = Mpd::new(client).unwrap();
+    let client = ::mpd::Client::connect("127.0.0.1:6600").unwrap();
+    let client = mpd::Mpd::new(client).unwrap();
 
     // parse config
     let config = Config::new().unwrap();

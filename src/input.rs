@@ -32,10 +32,10 @@ pub(crate) fn input<B: Backend>(
     let mut last_tick = Instant::now();
     loop {
         // draw ui
-        terminal.draw(|f| ui::draw(f, &mut app, &config, &client.lock().unwrap()))?;
+        terminal.draw(|f| crate::ui::draw(f, &mut app, &config, &client.lock().unwrap()))?;
 
         let timeout = app
-            .tick_rate
+            .tick_rate()
             .checked_sub(last_tick.elapsed())
             .unwrap_or_else(|| Duration::from_secs(0));
 
@@ -45,35 +45,35 @@ pub(crate) fn input<B: Backend>(
                 if key.code == KeyCode::Char('?') {
                     app.show_popup = !app.show_popup
                 }
-                if key.code == config.key_quit {
+                if key.code == config.keys().quit() {
                     return Ok(());
                 }
-                if key.code == config.key_switch_tab {
+                if key.code == config.keys().switch_tab() {
                     app.tab_next();
                 }
-                if key.code == config.key_toggle_pause {
-                    if let Err(e) = client.lock().unwrap().client.toggle_pause() {
+                if key.code == config.keys().toggle_pause() {
+                    if let Err(e) = client.lock().unwrap().client_mut().toggle_pause() {
                         println!("{:?}", e);
                     }
                 }
-                if key.code == config.key_vol_down {
+                if key.code == config.keys().vol_down() {
                     change_volume(&mut client.lock().unwrap(), -5)
                 }
-                if key.code == config.key_vol_up {
+                if key.code == config.keys().vol_up() {
                     change_volume(&mut client.lock().unwrap(), 5)
                 }
-                if key.code == config.key_queue_next {
-                    app.queue.next()
+                if key.code == config.keys().queue_next() {
+                    app.queue_next()
                 }
-                if key.code == config.key_queue_prev {
-                    app.queue.previous()
+                if key.code == config.keys().queue_prev() {
+                    app.queue_previous()
                 }
-                if key.code == config.key_switch_song {
+                if key.code == config.keys().switch_song() {
                     app.switch(&mut client.lock().unwrap());
                 }
             }
         }
-        if last_tick.elapsed() >= app.tick_rate {
+        if last_tick.elapsed() >= app.tick_rate() {
             // app.on_tick(&mut client);
             last_tick = Instant::now();
         }
@@ -81,10 +81,10 @@ pub(crate) fn input<B: Backend>(
 }
 
 fn change_volume(client: &mut Mpd, delta: i8) {
-    let volume = client.status.volume;
+    let volume = client.status().volume;
     let changed = volume + delta;
     if (0..=100).contains(&changed) {
-        if let Err(e) = client.client.volume(changed) {
+        if let Err(e) = client.client_mut().volume(changed) {
             println!("{:?}", e);
         };
     }
