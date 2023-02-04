@@ -29,6 +29,14 @@ pub(crate) fn input<B: Backend>(
     });
 
     let mut last_tick = Instant::now();
+    let quit = config.keys().quit();
+    let switch_tab = config.keys().switch_tab();
+    let toggle_pause = config.keys().toggle_pause();
+    let vol_down = config.keys().vol_down();
+    let vol_up = config.keys().vol_up();
+    let queue_next = config.keys().queue_next();
+    let queue_prev = config.keys().queue_prev();
+    let switch_song = config.keys().switch_song();
     loop {
         // draw ui
         terminal.draw(|f| crate::ui::draw(f, &mut app, &config, &client.lock().unwrap()))?;
@@ -44,31 +52,18 @@ pub(crate) fn input<B: Backend>(
                 if key.code == KeyCode::Char('?') {
                     app.show_popup = !app.show_popup
                 }
-                if key.code == config.keys().quit() {
-                    return Ok(());
-                }
-                if key.code == config.keys().switch_tab() {
-                    app.tab_next();
-                }
-                if key.code == config.keys().toggle_pause() {
-                    if let Err(e) = client.lock().unwrap().client_mut().toggle_pause() {
-                        println!("{:?}", e);
+                match key.code {
+                    code if code == queue_next => app.queue_next(),
+                    code if code == queue_prev => app.queue_previous(),
+                    code if code == vol_down => change_volume(&mut client.lock().unwrap(), -5),
+                    code if code == vol_up => change_volume(&mut client.lock().unwrap(), 5),
+                    code if code == switch_tab => app.tab_next(),
+                    code if code == toggle_pause => {
+                        client.lock().unwrap().client_mut().toggle_pause().unwrap()
                     }
-                }
-                if key.code == config.keys().vol_down() {
-                    change_volume(&mut client.lock().unwrap(), -5)
-                }
-                if key.code == config.keys().vol_up() {
-                    change_volume(&mut client.lock().unwrap(), 5)
-                }
-                if key.code == config.keys().queue_next() {
-                    app.queue_next()
-                }
-                if key.code == config.keys().queue_prev() {
-                    app.queue_previous()
-                }
-                if key.code == config.keys().switch_song() {
-                    app.switch(&mut client.lock().unwrap());
+                    code if code == switch_song => app.switch(&mut client.lock().unwrap()),
+                    code if code == quit => return Ok(()),
+                    _ => (),
                 }
             }
         }
