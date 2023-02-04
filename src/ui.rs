@@ -43,19 +43,19 @@ pub(crate) struct App<'a> {
 }
 
 impl<'a> App<'a> {
-    pub(crate) fn build(client: &Mpd, config: &config::Config) -> Result<Self, Box<dyn Error>> {
+    pub(crate) fn build(mpd: &Mpd, config: &config::Config) -> Result<Self, Box<dyn Error>> {
         Ok(Self {
             show_popup: false,
             tick_rate: Duration::from_millis(250),
             tab_titles: vec!["Queue", "Browse"],
             tab_index: 0,
-            queue: Queue::new(client, config),
+            queue: Queue::new(mpd, config),
         })
     }
 
-    pub(crate) fn switch(&mut self, client: &mut Mpd) {
+    pub(crate) fn switch(&mut self, mpd: &mut Mpd) {
         let selected = self.queue.state.selected().unwrap() as u32;
-        client.client_mut().switch(selected).unwrap();
+        mpd.client_mut().switch(selected).unwrap();
     }
 
     pub(crate) fn tab_next(&mut self) {
@@ -99,9 +99,9 @@ struct Queue<'a> {
 }
 
 impl<'a> Queue<'a> {
-    fn new(client: &Mpd, config: &config::Config) -> Self {
+    fn new(mpd: &Mpd, config: &config::Config) -> Self {
         // setup state
-        let pos: usize = match client.status().song {
+        let pos: usize = match mpd.status().song {
             Some(arg) => arg.pos as usize,
             None => 0,
         };
@@ -131,7 +131,7 @@ impl<'a> Queue<'a> {
 
         // setup rows
         let mut rows: Vec<Vec<String>> = Vec::new();
-        if let Some(songs) = client.queue() {
+        if let Some(songs) = mpd.queue() {
             for song in songs {
                 let mut cells = Vec::new();
                 for layout in config.playlist_layout() {
@@ -215,7 +215,7 @@ impl<'a> Queue<'a> {
 }
 
 /// Renders UI
-pub(crate) fn draw<B>(f: &mut Frame<B>, app: &mut App, config: &config::Config, client: &Mpd)
+pub(crate) fn draw<B>(f: &mut Frame<B>, app: &mut App, config: &config::Config, mpd: &Mpd)
 where
     B: Backend,
 {
@@ -238,8 +238,8 @@ where
     f.render_widget(tabs, chunks[0]);
 
     match app.tab_index {
-        0 => draw_tab_one(f, app, chunks[1], config, client),
-        1 => draw_tab_two(f, app, chunks[1], config, client),
+        0 => draw_tab_one(f, app, chunks[1], config, mpd),
+        1 => draw_tab_two(f, app, chunks[1], config, mpd),
         _ => {}
     }
 
@@ -247,8 +247,8 @@ where
         let area = calculate_area_for_popup(40, 40, size);
         f.render_widget(tui::widgets::Clear, area); //this clears out the background
 
-        let rows = config.keys().keys().iter().map(|i| {
-            let cells = i.iter().map(|c| Cell::from(&**c));
+        let rows = config.keys().keys().iter().map(|row| {
+            let cells = row.iter().map(|cell| Cell::from(&**cell));
             Row::new(cells)
         });
 
@@ -287,13 +287,8 @@ fn calculate_area_for_popup(percent_x: u16, percent_y: u16, area: Rect) -> Rect 
 }
 
 // {{{ 1st tab
-fn draw_tab_one<B>(
-    f: &mut Frame<B>,
-    app: &mut App,
-    area: Rect,
-    config: &config::Config,
-    client: &Mpd,
-) where
+fn draw_tab_one<B>(f: &mut Frame<B>, app: &mut App, area: Rect, config: &config::Config, mpd: &Mpd)
+where
     B: Backend,
 {
     let chunks = Layout::default()
@@ -308,11 +303,11 @@ fn draw_tab_one<B>(
         )
         .split(area);
 
-    draw_queue(f, app, chunks[0], config, client);
-    draw_progressbar(f, app, chunks[2], config, client);
+    draw_queue(f, app, chunks[0], config, mpd);
+    draw_progressbar(f, app, chunks[2], config, mpd);
 }
 
-fn draw_queue<B>(f: &mut Frame<B>, app: &mut App, area: Rect, config: &config::Config, client: &Mpd)
+fn draw_queue<B>(f: &mut Frame<B>, app: &mut App, area: Rect, config: &config::Config, mpd: &Mpd)
 where
     B: Backend,
 {
@@ -351,7 +346,7 @@ fn draw_progressbar<B>(
     _app: &mut App,
     area: Rect,
     config: &config::Config,
-    client: &Mpd,
+    mpd: &Mpd,
 ) where
     B: Backend,
 {
@@ -367,7 +362,7 @@ fn draw_progressbar<B>(
         )
         .split(area);
 
-    let label: (String, String) = match &client.curr_song() {
+    let label: (String, String) = match &mpd.curr_song() {
         Some(song) => {
             let artist = song
                 .tags
@@ -388,14 +383,14 @@ fn draw_progressbar<B>(
         .borders(Borders::TOP);
     f.render_widget(label, chunks[0]);
 
-    let volume = client.status().volume;
+    let volume = mpd.status().volume;
     let status = Block::default().title(Span::styled(
         format!("Volume: {}%", volume),
         Style::default().fg(Color::Gray),
     ));
     f.render_widget(status, chunks[1]);
 
-    let progress: (String, u16) = match client.status().time {
+    let progress: (String, u16) = match mpd.status().time {
         Some(time) => {
             let elapsed = time.0.num_seconds() as u16;
             let duration = time.1.num_seconds() as u16;
@@ -422,7 +417,7 @@ fn draw_tab_two<B>(
     _app: &mut App,
     area: Rect,
     _config: &config::Config,
-    client: &Mpd,
+    mpd: &Mpd,
 ) where
     B: Backend,
 {
@@ -431,7 +426,7 @@ fn draw_tab_two<B>(
         .constraints([Constraint::Min(0)].as_ref())
         .split(area);
 
-    if let Some(items) = client.playlists() {
+    if let Some(items) = mpd.playlists() {
         let items: Vec<ListItem> = items
             .iter()
             .map(|i| ListItem::new(i.name.clone()).style(Style::default()))
