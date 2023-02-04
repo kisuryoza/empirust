@@ -317,21 +317,21 @@ where
         .split(area);
 
     let queue = &mut app.queue;
-    ////////////////////////////////////////////////////////
-    // FIXME: this block looks ugly and slow
+    let style_playing = config.styles().playing();
+    let style_normal = config.styles().normal();
+    let curr_playing_pos = mpd.curr_playing_pos();
+
     let mut i = 0;
-    let rows = queue.rows.iter().map(|item| -> Row {
-        let cells = item.iter().map(|c| Cell::from(&**c));
-        let style = if client.curr_playing_pos() == i {
-            config.styles().playing()
+    let rows = queue.rows.iter().map(|row| -> Row {
+        let cells = row.iter().map(|cell| -> Cell { Cell::from(&**cell) });
+        let style = if curr_playing_pos == i {
+            style_playing
         } else {
-            config.styles().normal()
+            style_normal
         };
         i += 1;
-        // let style = config.normal_style();
         Row::new(cells).style(style)
     });
-    ////////////////////////////////////////////////////////
 
     let table = Table::new(rows)
         .header(queue.header.clone())
