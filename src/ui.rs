@@ -13,6 +13,9 @@ use tui::{
 
 use crate::config;
 
+/// Formats time (in seconds) to human readable {min:sec}
+///
+/// * `time`: in seconds
 fn human_formated_time(time: u16) -> String {
     let min = time / 60;
     let sec = time % 60;
@@ -26,10 +29,10 @@ fn human_formated_time(time: u16) -> String {
 #[derive(Debug)]
 /// Holds data of the application's ui
 ///
+/// * `show_popup`: is popup opened
 /// * `tick_rate`: how often to update ui
 /// * `tab_titles`: vector of tab's names
 /// * `tab_index`: number of selected tab
-/// * `show_popup`: is popup opened
 /// * `queue`: holds list of songs to display
 pub(crate) struct App<'a> {
     pub(crate) show_popup: bool,
@@ -84,9 +87,9 @@ impl<'a> App<'a> {
 /// Queue widget
 ///
 /// * `state`: selected item
-/// * `header`:
-/// * `rows`: vector of strings of rows
-/// * `widths`:
+/// * `header`: on top of the rows
+/// * `rows`: vector of rows with cells
+/// * `widths`: of cells
 struct Queue<'a> {
     state: TableState,
     header: Row<'a>,
@@ -180,6 +183,7 @@ impl<'a> Queue<'a> {
         }
     }
 
+    /// Selecet next item in Queue
     pub(crate) fn next(&mut self) {
         let i = match self.state.selected() {
             Some(i) => {
@@ -194,6 +198,7 @@ impl<'a> Queue<'a> {
         self.state.select(Some(i));
     }
 
+    /// Selecet previous item in Queue
     pub(crate) fn previous(&mut self) {
         let i = match self.state.selected() {
             Some(i) => {
