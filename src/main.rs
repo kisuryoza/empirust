@@ -1,5 +1,4 @@
-use crate::ui::App;
-use config::Config;
+use crate::{config::Config, ui::app::App};
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
@@ -16,13 +15,13 @@ mod ui;
 fn main() -> Result<(), Box<dyn Error>> {
     // connect to mpd server and create an mpd data holder
     let client = ::mpd::Client::connect("127.0.0.1:6600").unwrap();
-    let client = mpd::Mpd::new(client).unwrap();
+    let client = crate::mpd::Mpd::new(client).unwrap();
 
     // parse config
     let config = Config::new().unwrap();
 
     // setup UI
-    let app = App::build(&client, &config).unwrap();
+    let app = App::new(&client, &config);
 
     // setup terminal
     enable_raw_mode()?;

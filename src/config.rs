@@ -1,8 +1,7 @@
 //! Parses config
 
-use std::error::Error;
-
 use crossterm::event::KeyCode;
+use std::error::Error;
 use tui::style::{Color, Modifier, Style};
 
 #[allow(dead_code)]
@@ -20,6 +19,7 @@ pub(crate) enum PlaylistLayout {
 pub(crate) struct Config {
     styles: Styles,
     keys: Keys,
+    // is in form of: Type of column, its width in percents
     playlist_layout: Vec<(PlaylistLayout, u16)>,
 }
 

@@ -10,8 +10,8 @@ pub(crate) struct Mpd {
     status: Status,
     playlists: Option<Vec<Playlist>>,
     queue: Option<Vec<Song>>,
-    prev_song: Option<Song>,
     curr_song: Option<Song>,
+    prev_playing_pos: u32,
     curr_playing_pos: u32,
     curr_song_duration: u16,
 }
@@ -45,8 +45,8 @@ impl Mpd {
             status,
             playlists,
             queue,
-            prev_song: curr_song.clone(),
             curr_song,
+            prev_playing_pos: curr_playing_pos,
             curr_playing_pos,
             curr_song_duration,
         })
@@ -64,8 +64,8 @@ impl Mpd {
         };
 
         // update data of the new song
-        if self.curr_song != self.prev_song {
-            self.prev_song = self.curr_song.clone();
+        if self.curr_playing_pos != self.prev_playing_pos {
+            self.prev_playing_pos = self.curr_playing_pos;
             self.curr_song_duration = match self.status.time {
                 Some(time) => time.1.num_seconds().try_into().unwrap_or(0),
                 None => 0,
