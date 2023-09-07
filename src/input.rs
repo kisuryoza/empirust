@@ -9,11 +9,11 @@ use crossterm::event::{self, Event, KeyCode};
 use std::time::{Duration, Instant};
 use tui::{backend::Backend, Terminal};
 
-pub(crate) fn input<B: Backend>(
+pub fn input<B: Backend>(
     terminal: &mut Terminal<B>,
     mut app: App,
     mut client: Mpd,
-    config: Config,
+    config: &Config,
 ) -> crossterm::Result<()> {
     let mut last_tick = Instant::now();
     let quit = config.keys().quit();
@@ -26,7 +26,7 @@ pub(crate) fn input<B: Backend>(
     let switch_song = config.keys().switch_song();
     loop {
         // draw ui
-        terminal.draw(|f| draw(f, &mut app, &config, &client))?;
+        terminal.draw(|f| draw(f, &mut app, config, &client))?;
 
         let timeout = app
             .tick_rate()
@@ -37,7 +37,7 @@ pub(crate) fn input<B: Backend>(
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
                 if key.code == KeyCode::Char('?') {
-                    app.show_popup = !app.show_popup
+                    app.show_popup = !app.show_popup;
                 }
                 match key.code {
                     code if code == queue_next => app.next(),

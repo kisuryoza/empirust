@@ -12,7 +12,7 @@ opt-level = 1
 opt-level = 3
 
 [dependencies]
-tui = "0.19.*"
-crossterm = "0.26.*"
+tui = "0.19"
+crossterm = "0.27"
 mpd = "*"
 # time = "*"

@@ -5,7 +5,7 @@ use std::error::Error;
 
 #[derive(Debug)]
 /// Holds MPD's data
-pub(crate) struct Mpd {
+pub struct Mpd {
     client: Client,
     status: Status,
     playlists: Option<Vec<Playlist>>,
@@ -19,26 +19,13 @@ pub(crate) struct Mpd {
 impl Mpd {
     pub(crate) fn new(mut client: Client) -> Result<Self, Box<dyn Error>> {
         let status = client.status()?;
-        let playlists = match client.playlists() {
-            Ok(arg) => Some(arg),
-            Err(_) => None,
-        };
-        let queue = match client.queue() {
-            Ok(arg) => Some(arg),
-            Err(_) => None,
-        };
-        let curr_song = match client.currentsong() {
-            Ok(arg) => arg,
-            Err(_) => None,
-        };
-        let curr_playing_pos = match status.song {
-            Some(arg) => arg.pos,
-            None => 0,
-        };
-        let curr_song_duration: u16 = match status.time {
-            Some(time) => time.1.num_seconds().try_into().unwrap_or(1),
-            None => 1,
-        };
+        let playlists = client.playlists().ok();
+        let queue = client.queue().ok();
+        let curr_song = client.currentsong().map_or(None, |arg| arg);
+        let curr_playing_pos = status.song.map_or(0, |arg| arg.pos);
+        let curr_song_duration: u16 = status
+            .time
+            .map_or(1, |time| time.1.num_seconds().try_into().unwrap_or(1));
 
         Ok(Self {
             client,
@@ -54,22 +41,16 @@ impl Mpd {
 
     pub(crate) fn update(&mut self) {
         self.status = self.client.status().unwrap();
-        self.curr_song = match self.client.currentsong() {
-            Ok(arg) => arg,
-            Err(_) => None,
-        };
-        self.curr_playing_pos = match self.status.song {
-            Some(arg) => arg.pos,
-            None => 0,
-        };
+        self.curr_song = self.client.currentsong().map_or(None, |arg| arg);
+        self.curr_playing_pos = self.status.song.map_or(0, |arg| arg.pos);
 
         // update data of the new song
         if self.curr_playing_pos != self.prev_playing_pos {
             self.prev_playing_pos = self.curr_playing_pos;
-            self.curr_song_duration = match self.status.time {
-                Some(time) => time.1.num_seconds().try_into().unwrap_or(0),
-                None => 0,
-            };
+            self.curr_song_duration = self
+                .status
+                .time
+                .map_or(0, |time| time.1.num_seconds().try_into().unwrap_or(0));
         }
     }
 
@@ -77,23 +58,23 @@ impl Mpd {
         &mut self.client
     }
 
-    pub(crate) fn status(&self) -> &Status {
+    pub(crate) const fn status(&self) -> &Status {
         &self.status
     }
 
-    pub(crate) fn playlists(&self) -> Option<&Vec<Playlist>> {
+    pub(crate) const fn playlists(&self) -> Option<&Vec<Playlist>> {
         self.playlists.as_ref()
     }
 
-    pub(crate) fn queue(&self) -> Option<&Vec<Song>> {
+    pub(crate) const fn queue(&self) -> Option<&Vec<Song>> {
         self.queue.as_ref()
     }
 
-    pub(crate) fn curr_song(&self) -> Option<&Song> {
+    pub(crate) const fn curr_song(&self) -> Option<&Song> {
         self.curr_song.as_ref()
     }
 
-    pub(crate) fn curr_playing_pos(&self) -> u32 {
+    pub(crate) const fn curr_playing_pos(&self) -> u32 {
         self.curr_playing_pos
     }
 }

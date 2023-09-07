@@ -6,7 +6,7 @@ use tui::style::{Color, Modifier, Style};
 
 #[allow(dead_code)]
 #[derive(Debug)]
-pub(crate) enum PlaylistLayout {
+pub enum PlaylistLayout {
     File,
     Title,
     Duration,
@@ -16,7 +16,7 @@ pub(crate) enum PlaylistLayout {
 }
 
 #[derive(Debug)]
-pub(crate) struct Config {
+pub struct Config {
     styles: Styles,
     keys: Keys,
     // is in form of: Type of column, its width in percents
@@ -41,16 +41,16 @@ impl Default for Config {
 
 impl Config {
     pub(crate) fn new() -> Result<Self, Box<dyn Error>> {
-        let config: Config = Config::default();
+        let config = Self::default();
 
         Ok(config)
     }
 
-    pub(crate) fn styles(&self) -> &Styles {
+    pub(crate) const fn styles(&self) -> &Styles {
         &self.styles
     }
 
-    pub(crate) fn keys(&self) -> &Keys {
+    pub(crate) const fn keys(&self) -> &Keys {
         &self.keys
     }
 
@@ -60,7 +60,7 @@ impl Config {
 }
 
 #[derive(Debug)]
-pub(crate) struct Styles {
+pub struct Styles {
     tab_selected: Style,
     normal: Style,
     selected: Style,
@@ -84,29 +84,29 @@ impl Default for Styles {
 }
 
 impl Styles {
-    pub(crate) fn tab_selected(&self) -> Style {
+    pub(crate) const fn tab_selected(&self) -> Style {
         self.tab_selected
     }
 
-    pub(crate) fn normal(&self) -> Style {
+    pub(crate) const fn normal(&self) -> Style {
         self.normal
     }
 
-    pub(crate) fn selected(&self) -> Style {
+    pub(crate) const fn selected(&self) -> Style {
         self.selected
     }
 
-    pub(crate) fn playing(&self) -> Style {
+    pub(crate) const fn playing(&self) -> Style {
         self.playing
     }
 
-    pub(crate) fn progress(&self) -> Style {
+    pub(crate) const fn progress(&self) -> Style {
         self.progress
     }
 }
 
 #[derive(Debug)]
-pub(crate) struct Keys {
+pub struct Keys {
     quit: KeyCode,
     switch_tab: KeyCode,
     toggle_pause: KeyCode,
@@ -123,14 +123,14 @@ impl Default for Keys {
         let mut keys: Vec<Vec<String>> = Vec::new();
 
         Self {
-            quit: Keys::gen_key_and_desc(&mut keys, "q", "Quit"),
-            switch_tab: Keys::gen_key_and_desc(&mut keys, "tab", "Switch tab"),
-            toggle_pause: Keys::gen_key_and_desc(&mut keys, "p", "Toggle pause"),
-            vol_down: Keys::gen_key_and_desc(&mut keys, "left", "Volume down"),
-            vol_up: Keys::gen_key_and_desc(&mut keys, "right", "Volume up"),
-            queue_next: Keys::gen_key_and_desc(&mut keys, "j", "Move next"),
-            queue_prev: Keys::gen_key_and_desc(&mut keys, "k", "Move back"),
-            switch_song: Keys::gen_key_and_desc(&mut keys, "enter", "Switch to song under cursor"),
+            quit: Self::gen_key_and_desc(&mut keys, "q", "Quit"),
+            switch_tab: Self::gen_key_and_desc(&mut keys, "tab", "Switch tab"),
+            toggle_pause: Self::gen_key_and_desc(&mut keys, "p", "Toggle pause"),
+            vol_down: Self::gen_key_and_desc(&mut keys, "left", "Volume down"),
+            vol_up: Self::gen_key_and_desc(&mut keys, "right", "Volume up"),
+            queue_next: Self::gen_key_and_desc(&mut keys, "j", "Move next"),
+            queue_prev: Self::gen_key_and_desc(&mut keys, "k", "Move back"),
+            switch_song: Self::gen_key_and_desc(&mut keys, "enter", "Switch to song under cursor"),
             keys,
         }
     }
@@ -140,7 +140,7 @@ impl Keys {
     fn gen_key_and_desc(keys: &mut Vec<Vec<String>>, key: &str, desc: &str) -> KeyCode {
         let cell = vec![key.to_string(), desc.to_string()];
         keys.push(cell);
-        Keys::to_keycode(key)
+        Self::to_keycode(key)
     }
 
     fn to_keycode(key: &str) -> KeyCode {
@@ -167,35 +167,35 @@ impl Keys {
         }
     }
 
-    pub(crate) fn quit(&self) -> KeyCode {
+    pub(crate) const fn quit(&self) -> KeyCode {
         self.quit
     }
 
-    pub(crate) fn switch_tab(&self) -> KeyCode {
+    pub(crate) const fn switch_tab(&self) -> KeyCode {
         self.switch_tab
     }
 
-    pub(crate) fn toggle_pause(&self) -> KeyCode {
+    pub(crate) const fn toggle_pause(&self) -> KeyCode {
         self.toggle_pause
     }
 
-    pub(crate) fn vol_down(&self) -> KeyCode {
+    pub(crate) const fn vol_down(&self) -> KeyCode {
         self.vol_down
     }
 
-    pub(crate) fn vol_up(&self) -> KeyCode {
+    pub(crate) const fn vol_up(&self) -> KeyCode {
         self.vol_up
     }
 
-    pub(crate) fn queue_next(&self) -> KeyCode {
+    pub(crate) const fn queue_next(&self) -> KeyCode {
         self.queue_next
     }
 
-    pub(crate) fn queue_prev(&self) -> KeyCode {
+    pub(crate) const fn queue_prev(&self) -> KeyCode {
         self.queue_prev
     }
 
-    pub(crate) fn switch_song(&self) -> KeyCode {
+    pub(crate) const fn switch_song(&self) -> KeyCode {
         self.switch_song
     }
 

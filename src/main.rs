@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut terminal = Terminal::new(backend)?;
 
     // handle input
-    if let Err(e) = input::input(&mut terminal, app, client, config) {
+    if let Err(e) = input::input(&mut terminal, app, client, &config) {
         println!("Input Error: {:?}\r", e);
     }
 

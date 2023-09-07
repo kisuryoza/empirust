@@ -11,13 +11,7 @@ use tui::{
 
 #[derive(Debug)]
 /// Holds data of the application's ui
-///
-/// * `show_popup`: is popup opened
-/// * `tick_rate`: how often to update ui
-/// * `tab_titles`: vector of tab's names
-/// * `tab_index`: number of selected tab
-/// * `queue`: holds list of songs to display
-pub(crate) struct App<'app> {
+pub struct App<'app> {
     pub(crate) show_popup: bool,
     tick_rate: Duration,
     tab_titles: Vec<&'app str>,
@@ -33,10 +27,7 @@ pub(crate) struct App<'app> {
 impl<'app> App<'app> {
     pub(crate) fn new(mpd: &Mpd, config: &Config) -> App<'app> {
         // setup state
-        let pos: usize = match mpd.status().song {
-            Some(arg) => arg.pos as usize,
-            None => 0,
-        };
+        let pos: usize = mpd.status().song.map_or(0, |arg| arg.pos as usize);
         let mut state = TableState::default();
         state.select(Some(pos));
 
@@ -100,7 +91,7 @@ impl<'app> App<'app> {
     //     }
     // }
 
-    pub(crate) fn tick_rate(&self) -> Duration {
+    pub(crate) const fn tick_rate(&self) -> Duration {
         self.tick_rate
     }
 
@@ -121,29 +112,23 @@ impl<'app> App<'app> {
         let rows = songs.iter().map(|song| -> Row {
             let row = config.playlist_layout().iter().map(|layout| -> String {
                 match layout.0 {
-                    config::PlaylistLayout::File => song.file.to_owned(),
-                    config::PlaylistLayout::Title => song.title.to_owned().unwrap_or_default(),
+                    config::PlaylistLayout::File => song.file.clone(),
+                    config::PlaylistLayout::Title => song.title.clone().unwrap_or_default(),
                     config::PlaylistLayout::Duration => song
                         .duration
                         .map(|item| {
                             crate::ui::human_formated_time(item.num_seconds().try_into().unwrap())
                         })
                         .unwrap_or_default(),
-                    config::PlaylistLayout::Album => song
-                        .tags
-                        .get("Album")
-                        .map(|item| item.to_owned())
-                        .unwrap_or_default(),
-                    config::PlaylistLayout::Artist => song
-                        .tags
-                        .get("Artist")
-                        .map(|item| item.to_owned())
-                        .unwrap_or_default(),
-                    config::PlaylistLayout::Track => song
-                        .tags
-                        .get("Track")
-                        .map(|item| item.to_owned())
-                        .unwrap_or_default(),
+                    config::PlaylistLayout::Album => {
+                        song.tags.get("Album").cloned().unwrap_or_default()
+                    }
+                    config::PlaylistLayout::Artist => {
+                        song.tags.get("Artist").cloned().unwrap_or_default()
+                    }
+                    config::PlaylistLayout::Track => {
+                        song.tags.get("Track").cloned().unwrap_or_default()
+                    }
                 }
             });
             let style = if curr_playing_pos == i {
@@ -196,11 +181,11 @@ impl<'app> App<'app> {
         self.tab_titles.as_ref()
     }
 
-    pub(crate) fn tab_index(&self) -> usize {
+    pub(crate) const fn tab_index(&self) -> usize {
         self.tab_index
     }
 
-    pub(crate) fn state(&self) -> &TableState {
+    pub(crate) const fn state(&self) -> &TableState {
         &self.state
     }
 

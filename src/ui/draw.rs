@@ -15,7 +15,7 @@ use tui::{
 };
 
 /// Renders UI
-pub(crate) fn draw<B>(f: &mut Frame<B>, app: &mut App, config: &Config, mpd: &Mpd)
+pub fn draw<B>(f: &mut Frame<B>, app: &mut App, config: &Config, mpd: &Mpd)
 where
     B: Backend,
 {
@@ -43,21 +43,24 @@ where
         _ => {}
     }
 
-    if app.show_popup {
-        let area = calculate_area_for_popup(40, 40, size);
-        f.render_widget(tui::widgets::Clear, area); //this clears out the background
-
-        let rows = config.keys().keys().iter().map(|row| {
-            let cells = row.iter().map(|cell| Cell::from(&**cell));
-            Row::new(cells)
-        });
-
-        let table = Table::new(rows)
-            .block(Block::default().title("Help").borders(Borders::ALL))
-            .widths(&[Constraint::Percentage(20), Constraint::Percentage(80)]);
-
-        f.render_widget(table, area);
+    if !app.show_popup {
+        return;
     }
+
+    let area = calculate_area_for_popup(40, 40, size);
+    // clears out the background
+    f.render_widget(tui::widgets::Clear, area);
+
+    let rows = config.keys().keys().iter().map(|row| {
+        let cells = row.iter().map(|cell| Cell::from(&**cell));
+        Row::new(cells)
+    });
+
+    let table = Table::new(rows)
+        .block(Block::default().title("Help").borders(Borders::ALL))
+        .widths(&[Constraint::Percentage(20), Constraint::Percentage(80)]);
+
+    f.render_widget(table, area);
 }
 
 fn calculate_area_for_popup(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
@@ -140,21 +143,21 @@ where
         )
         .split(area);
 
-    let label: (String, String) = match &mpd.curr_song() {
-        Some(song) => {
-            let artist = song
-                .tags
-                .get("Artist")
-                .unwrap_or(&String::new())
-                .to_string();
-            let title = match &song.title {
-                Some(arg) => arg.clone(),
-                None => String::new(),
-            };
-            (artist, title)
-        }
-        None => (String::new(), String::new()),
-    };
+    let label: (String, String) =
+        mpd.curr_song()
+            .as_ref()
+            .map_or((String::new(), String::new()), |song| {
+                let artist = song
+                    .tags
+                    .get("Artist")
+                    .unwrap_or(&String::new())
+                    .to_string();
+                let title = song
+                    .title
+                    .as_ref()
+                    .map_or(String::new(), std::clone::Clone::clone);
+                (artist, title)
+            });
 
     let label = Block::default()
         .title(Span::raw(format!("{} - {}", label.0, label.1)))
@@ -168,19 +171,16 @@ where
     ));
     f.render_widget(status, chunks[1]);
 
-    let progress: (String, u16) = match mpd.status().time {
-        Some(time) => {
-            let elapsed = time.0.num_seconds() as u16;
-            let duration = time.1.num_seconds() as u16;
-            let label = format!(
-                "{}/{}",
-                human_formated_time(elapsed),
-                human_formated_time(duration),
-            );
-            (label, (elapsed * 100 / duration))
-        }
-        None => (String::new(), 0),
-    };
+    let progress: (String, u16) = mpd.status().time.map_or((String::new(), 0), |time| {
+        let elapsed = time.0.num_seconds() as u16;
+        let duration = time.1.num_seconds() as u16;
+        let label = format!(
+            "{}/{}",
+            human_formated_time(elapsed),
+            human_formated_time(duration),
+        );
+        (label, (elapsed * 100 / duration))
+    });
     let progress = Gauge::default()
         .gauge_style(config.styles().progress())
         .label(progress.0)
